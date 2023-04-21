@@ -1,0 +1,16 @@
+from django.urls import path
+from .views import register_attempt,login_attempt
+from .views import *;
+urlpatterns = [
+    path('api/patients',PatientAccountViewSet.as_view({
+        'get' : 'list',
+        'post':'create'
+    })),
+    path('api/patients/<str:pk>',PatientAccountViewSet.as_view({
+        'put' : 'update',
+        'delete' : 'destroy'
+    })),
+    path('verify/<auth_token>' , verify , name="verify"),
+    path('patient/login' ,login_attempt , name="login_attempt"),
+    path('patient/register',register_attempt,name="register_attempt"),
+]
