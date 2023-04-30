@@ -10,7 +10,7 @@ import uuid
 from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
-from rest_framework.renderers import TemplateHTMLRenderer
+from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from rest_framework.decorators import api_view,renderer_classes
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate,login
@@ -29,7 +29,7 @@ def home(request):
 
 def send_mail_after_registration(email,token):
     subject = 'You Accounnt need to be verified '
-    message = f'Hi paste the link to verify you account http://127.0.0.1:8000/api/auth/verify/{token}'
+    message = f'Hi paste the link to verify you account http://127.0.0.1:8000/auth/verify/{token}'
     email_from = settings.EMAIL_HOST_USER
     recipient_list = [email]
     send_mail(subject,message,email_from,recipient_list)
@@ -41,25 +41,42 @@ def verify(request,auth_token):
         patient = PatientAccount.objects.get(auth_token=auth_token)
         if patient:
             if patient.user.is_active:
-                data = {
-                    'message' : 'Your accout is already verified.'
-                }
-                return Response(data,template_name='success.html')
-            patient.user.is_active = True
+                return redirect('patient/compteVerif')
+            user=patient.user
+            user.is_active = True
             user.save()
             patient.save()
-            data = {
-                'message':'Your account has been verified.'
-            }
-            return Response(data,template_name='success.html')
+            return redirect('patient/succes')
         else : 
-            data = {
-                'message' : 'Profile does not exist'
-            }
-            return Response(data,template_name='error.html')
+            return redirect('patient/error')
     except Exception as e :
         print(e)
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,template_name='error.html')
+
+
+@api_view(('GET',))
+@renderer_classes((TemplateHTMLRenderer, JSONRenderer))
+def succesVerification(request):
+    data = {
+                'message':'Your account has been verified.'
+            }
+    return Response(data,template_name='success.html')
+@api_view(('GET',))
+@renderer_classes((TemplateHTMLRenderer, JSONRenderer))
+def erroVerification(request):
+    data = {
+                'message' : 'Profile does not exist'
+            }
+    return Response(data,template_name='error.html')
+
+@api_view(('GET',))
+@renderer_classes((TemplateHTMLRenderer, JSONRenderer))
+def compteVerified(request):
+    data = {
+                'message':'Your account has been verified.'
+            }
+    return Response(data,template_name='success.html')
+
 
 @renderer_classes((TemplateHTMLRenderer,))
 def login_attempt(request):
@@ -98,7 +115,7 @@ class PatientAccountViewSet(viewsets.ViewSet):
     
     #@api_view(('POST',))
     @renderer_classes((TemplateHTMLRenderer,))
-    def create(request):
+    def create(self,request):
         data = request.data 
         username = data['username']
         email = data['email']
@@ -109,12 +126,12 @@ class PatientAccountViewSet(viewsets.ViewSet):
                 data = {
                     'username' : 'user with this username already exists'
                 }
-                return Response(data=data,template_name='error.html',status=status.HTTP_406_NOT_ACCEPTABLE)
+                return Response(data=data,status=status.HTTP_406_NOT_ACCEPTABLE)
             if User.objects.filter(email=email).exists():
                 data = {
                     'email' : 'user with this email already exists'
                 }
-                return Response(data=data,template_name='error.html',status=status.HTTP_406_NOT_ACCEPTABLE)
+                return Response(data=data,status=status.HTTP_406_NOT_ACCEPTABLE)
             # Create User 
             user = User(username=username,first_name=data['firstname'],last_name=data['lastname'],email=data['email'])
             user.set_password(password)
@@ -128,7 +145,7 @@ class PatientAccountViewSet(viewsets.ViewSet):
             data = {
                 'message' : ['We have sent an email to you ','Please check your mail']
             }
-            return Response(data,status=status.HTTP_201_CREATED,template_name='token_send.html')
+            return Response(data,status=status.HTTP_201_CREATED)
         except Exception as e:
             print(e)
             
